@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Villa Immersive — Visite 3D à la première personne</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="loading-screen">
+    <div class="loading-box">
+      <h1>Villa Immersive</h1>
+      <div class="progress-track"><div id="progress-bar"></div></div>
+      <p id="loading-text">Construction de la villa…</p>
+    </div>
+  </div>
+
+  <div id="menu-screen" class="hidden">
+    <div class="menu-box">
+      <h1>Villa Immersive</h1>
+      <p>Piscine · Sauna en cave · Jacuzzi · Terrain de foot · Jardin</p>
+      <button id="start-btn">Cliquer pour entrer ▶</button>
+      <div class="controls-help">
+        <div><span>Z Q S D</span> ou <span>Flèches</span> — se déplacer</div>
+        <div><span>Souris</span> — regarder autour de vous</div>
+        <div><span>Maj</span> — courir</div>
+        <div><span>Espace</span> — sauter</div>
+        <div><span>Molette / F</span> — vue objectif (zoom)</div>
+        <div><span>M</span> — carte du domaine</div>
+        <div><span>Échap</span> — libérer la souris</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="hud" class="hidden">
+    <div id="crosshair"></div>
+    <div id="zone-label"></div>
+    <div id="compass"><div id="compass-needle"></div></div>
+    <div id="minimap-wrap">
+      <canvas id="minimap" width="180" height="180"></canvas>
+      <div id="minimap-dot"></div>
+    </div>
+    <div id="fps">FPS: --</div>
+  </div>
+
+  <div id="pause-screen" class="hidden">
+    <div class="menu-box">
+      <h1>Pause</h1>
+      <button id="resume-btn">Reprendre ▶</button>
+      <div class="controls-help">
+        <div><span>Z Q S D</span> ou <span>Flèches</span> — se déplacer</div>
+        <div><span>Souris</span> — regarder autour de vous</div>
+        <div><span>Maj</span> — courir</div>
+        <div><span>Espace</span> — sauter</div>
+        <div><span>M</span> — carte du domaine</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/build/three.module.js",
+      "three/addons/": "./vendor/three/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
