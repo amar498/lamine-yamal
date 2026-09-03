@@ -31,7 +31,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.95;
+renderer.toneMappingExposure = 1.05;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -68,7 +68,7 @@ function setupSkyAndLights() {
 
   scene.fog = new THREE.Fog(0xcfe0ea, 40, 180);
 
-  const sun = new THREE.DirectionalLight(0xfff2d9, 1.3);
+  const sun = new THREE.DirectionalLight(0xfff2d9, 1.4);
   sun.position.copy(sunDir).multiplyScalar(80);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -82,17 +82,16 @@ function setupSkyAndLights() {
   scene.add(sun);
   scene.add(sun.target);
 
-  const hemi = new THREE.HemisphereLight(0xaed4f5, 0x4c7a3a, 0.18);
+  const hemi = new THREE.HemisphereLight(0xaed4f5, 0x4c7a3a, 0.55);
   scene.add(hemi);
-  const fill = new THREE.AmbientLight(0xffffff, 0.06);
+  const fill = new THREE.AmbientLight(0xffffff, 0.18);
   scene.add(fill);
 
-  // Bake the sky into a PMREM environment map so PBR materials get realistic
-  // ambient light and subtle sky-colored reflections instead of flat fill light.
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const envRT = pmrem.fromScene(scene, 0.02);
-  scene.environment = envRT.texture;
-  pmrem.dispose();
+  // Note: deliberately not using scene.environment (a PMREM sky env map) here —
+  // three.js applies it globally with no occlusion, so it lit interior rooms
+  // as brightly as the open sky and blew out the whole scene. The Sky dome
+  // plus the sun/hemisphere/point lights above give a realistic look without
+  // that problem.
 }
 
 function drawMinimap() {
