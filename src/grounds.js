@@ -64,11 +64,6 @@ export function buildGrounds(world) {
   const animated = world.animated;
   const excluded = [];
 
-  // ---------- Lawn ----------
-  const lawn = m(new THREE.PlaneGeometry(140, 140), Materials.grass(), { rx: -Math.PI / 2, y: -0.01, castShadow: false });
-  lawn.receiveShadow = true;
-  grounds.add(lawn);
-
   // ---------- Entrance path (south, from gate to front door) ----------
   const pathMat = Materials.path();
   const path = m(new THREE.PlaneGeometry(2.4, 26), pathMat, { rx: -Math.PI / 2, y: 0.005, z: 19, castShadow: false });
@@ -127,6 +122,22 @@ export function buildGrounds(world) {
   deckPart(holeX2, deckX2, deckZ1, deckZ2);
   deckPart(holeX1, holeX2, deckZ1, holeZ1);
   deckPart(holeX1, holeX2, holeZ2, deckZ2);
+
+  // ---------- Lawn (built with the same pool-shaped hole — it sits below deck
+  // level and would otherwise float above the water and hide it) ----------
+  const lawnX1 = -70, lawnX2 = 70, lawnZ1 = -70, lawnZ2 = 70;
+  const grassMat = Materials.grass();
+  const lawnPart = (x1, x2, z1, z2) => {
+    const part = m(new THREE.PlaneGeometry(x2 - x1, z2 - z1), grassMat, {
+      x: (x1 + x2) / 2, y: -0.01, z: (z1 + z2) / 2, rx: -Math.PI / 2, castShadow: false,
+    });
+    part.receiveShadow = true;
+    grounds.add(part);
+  };
+  lawnPart(lawnX1, holeX1, lawnZ1, lawnZ2);
+  lawnPart(holeX2, lawnX2, lawnZ1, lawnZ2);
+  lawnPart(holeX1, holeX2, lawnZ1, holeZ1);
+  lawnPart(holeX1, holeX2, holeZ2, lawnZ2);
   const copingSpecs = [
     { w: poolX2 - poolX1 + copingT * 2, d: copingT, x: (poolX1 + poolX2) / 2, z: poolZ1 - copingT / 2 },
     { w: poolX2 - poolX1 + copingT * 2, d: copingT, x: (poolX1 + poolX2) / 2, z: poolZ2 + copingT / 2 },
