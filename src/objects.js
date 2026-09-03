@@ -1,5 +1,11 @@
 import * as THREE from "three";
-import { Materials } from "./textures.js";
+import { Materials, leafClusterTexture } from "./textures.js";
+
+let _leafTexture = null;
+function leafMaterial() {
+  if (!_leafTexture) _leafTexture = leafClusterTexture();
+  return new THREE.MeshStandardMaterial({ map: _leafTexture, roughness: 0.95 });
+}
 
 export function m(geo, mat, opt = {}) {
   const mesh = new THREE.Mesh(geo, mat);
@@ -300,25 +306,56 @@ export function createPlantPot(scale = 1) {
 
 export function createTree(scale = 1) {
   const g = new THREE.Group();
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4126, roughness: 0.9 });
-  const leafMat = new THREE.MeshStandardMaterial({ color: 0x2f7a35, roughness: 1 });
-  const h = 2.2 + Math.random() * 1.2;
-  g.add(m(new THREE.CylinderGeometry(0.12, 0.18, h, 8), trunkMat, { y: h / 2 }));
-  for (let i = 0; i < 3; i++) {
-    const s = 1.1 - i * 0.22;
-    g.add(m(new THREE.IcosahedronGeometry(s, 0), leafMat, {
-      y: h + i * 0.55, x: (Math.random() - 0.5) * 0.3, z: (Math.random() - 0.5) * 0.3,
-      ry: Math.random() * Math.PI,
-    }));
+  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4126, roughness: 0.92 });
+  const h = 2.4 + Math.random() * 1.4;
+
+  const trunk = m(new THREE.CylinderGeometry(0.1, 0.2, h, 7), trunkMat, { y: h / 2 });
+  trunk.rotation.z = (Math.random() - 0.5) * 0.1;
+  g.add(trunk);
+
+  // A couple of angled branch stubs break up the silhouette under the canopy.
+  for (let i = 0; i < 2; i++) {
+    const bl = 0.5 + Math.random() * 0.4;
+    const branch = m(new THREE.CylinderGeometry(0.035, 0.07, bl, 6), trunkMat, {
+      y: h * 0.55 + i * 0.35, ry: Math.random() * Math.PI * 2,
+    });
+    branch.rotation.z = (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.35);
+    branch.translateY(bl / 2);
+    g.add(branch);
   }
+
+  const leafMat = leafMaterial();
+  const clumps = 6 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < clumps; i++) {
+    const s = 0.7 + Math.random() * 0.55;
+    const foliage = m(new THREE.IcosahedronGeometry(s, 1), leafMat, {
+      x: (Math.random() - 0.5) * 1.15,
+      z: (Math.random() - 0.5) * 1.15,
+      y: h + Math.random() * 1.3 - 0.15,
+      ry: Math.random() * Math.PI,
+    });
+    foliage.scale.set(1 + Math.random() * 0.3, 0.72 + Math.random() * 0.3, 1 + Math.random() * 0.3);
+    g.add(foliage);
+  }
+
   g.scale.setScalar(scale);
   g.rotation.y = Math.random() * Math.PI * 2;
   return g;
 }
 
 export function createHedgeSegment(length) {
-  const mat = new THREE.MeshStandardMaterial({ color: 0x2e6b30, roughness: 1 });
-  return box(length, 0.7, 0.45, mat, { y: 0.35, castShadow: true });
+  const mat = new THREE.MeshStandardMaterial({ map: leafMaterial().map, color: 0x3a7a38, roughness: 1 });
+  const g = new THREE.Group();
+  g.add(box(length, 0.62, 0.42, mat, { y: 0.31 }));
+  // Slightly irregular top so the hedge doesn't read as a single flat-shaded box.
+  const bumps = Math.max(2, Math.round(length / 0.6));
+  for (let i = 0; i < bumps; i++) {
+    const bw = length / bumps;
+    g.add(box(bw * 0.85, 0.14, 0.38, mat, {
+      x: -length / 2 + bw * (i + 0.5), y: 0.62 + Math.random() * 0.05,
+    }));
+  }
+  return g;
 }
 
 export function createFenceSegment(length) {

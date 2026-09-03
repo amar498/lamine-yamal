@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { Water } from "three/addons/objects/Water.js";
 import { Materials } from "./textures.js";
 import {
   m, box, addCollider, pointLamp,
@@ -10,29 +11,22 @@ function rectsOverlap(a, b) {
   return !(a.x2 < b.x1 || a.x1 > b.x2 || a.z2 < b.z1 || a.z1 > b.z2);
 }
 
-function createWaterPlane(w, d, segX, segD, color) {
-  const geo = new THREE.PlaneGeometry(w, d, segX, segD);
-  const base = Float32Array.from(geo.attributes.position.array);
-  const mat = Materials.water();
-  if (color) mat.color.set(color);
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.receiveShadow = false;
-  mesh.castShadow = false;
-  mesh.userData.base = base;
-  return mesh;
-}
-
-function animateWater(mesh, t) {
-  const pos = mesh.geometry.attributes.position;
-  const base = mesh.userData.base;
-  for (let i = 0; i < pos.count; i++) {
-    const x = base[i * 3], y = base[i * 3 + 1];
-    const wave = Math.sin(x * 1.4 + t * 1.3) * 0.028 + Math.cos(y * 1.1 + t * 1.6) * 0.022;
-    pos.setZ(i, wave);
-  }
-  pos.needsUpdate = true;
-  mesh.geometry.computeVertexNormals();
+/** Reflective, sun-lit animated water surface (three.js Water) — used for both the pool and the hot tub. */
+function createRealisticWater(world, w, d, { textureSize = 512, color = 0x1a5e7a, distortionScale = 2.2 } = {}) {
+  const geo = new THREE.PlaneGeometry(w, d);
+  const water = new Water(geo, {
+    textureWidth: textureSize,
+    textureHeight: textureSize,
+    waterNormals: world.waterNormals,
+    sunDirection: world.sunDirection ? world.sunDirection.clone() : new THREE.Vector3(0.5, 0.7, 0.3),
+    sunColor: 0xfff2d9,
+    waterColor: color,
+    distortionScale,
+    alpha: 0.96,
+    fog: !!world.scene.fog,
+  });
+  water.rotation.x = -Math.PI / 2;
+  return water;
 }
 
 function createBubbles(count, radiusX, radiusZ, height, baseY) {
@@ -132,10 +126,12 @@ export function buildGrounds(world) {
     grounds.add(c);
     addCollider(world, c);
   }
-  const poolWater = createWaterPlane(poolX2 - poolX1, poolZ2 - poolZ1, 22, 14);
+  const poolWater = createRealisticWater(world, poolX2 - poolX1, poolZ2 - poolZ1, {
+    textureSize: 512, color: 0x14536b, distortionScale: 2.4,
+  });
   poolWater.position.set((poolX1 + poolX2) / 2, -0.35, (poolZ1 + poolZ2) / 2);
   grounds.add(poolWater);
-  animated.push({ update: (t) => animateWater(poolWater, t) });
+  animated.push({ update: (t, dt) => { poolWater.material.uniforms.time.value += dt * 0.6; } });
   const poolFloor = m(new THREE.PlaneGeometry(poolX2 - poolX1, poolZ2 - poolZ1), Materials.tileFloor(), {
     x: (poolX1 + poolX2) / 2, y: -1.4, z: (poolZ1 + poolZ2) / 2, rx: -Math.PI / 2, castShadow: false,
   });
@@ -152,10 +148,12 @@ export function buildGrounds(world) {
   const tubWood = Materials.saunaWood();
   const tubW = 2.0, tubD = 2.0, tubH = 0.75;
   tubGroup.add(box(tubW, tubH, tubD, tubWood, { y: tubH / 2 }));
-  const jacuzziWater = createWaterPlane(tubW - 0.2, tubD - 0.2, 10, 10, 0x3aa0c9);
+  const jacuzziWater = createRealisticWater(world, tubW - 0.2, tubD - 0.2, {
+    textureSize: 256, color: 0x2f93b8, distortionScale: 1.1,
+  });
   jacuzziWater.position.y = tubH - 0.08;
   tubGroup.add(jacuzziWater);
-  animated.push({ update: (t) => animateWater(jacuzziWater, t) });
+  animated.push({ update: (t, dt) => { jacuzziWater.material.uniforms.time.value += dt * 1.4; } });
   const bubbles = createBubbles(140, tubW / 2 - 0.15, tubD / 2 - 0.15, 0.4, tubH - 0.05);
   tubGroup.add(bubbles);
   animated.push({ update: (t, dt) => updateBubbles(bubbles, dt) });

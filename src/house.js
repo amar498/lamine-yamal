@@ -52,6 +52,34 @@ function wallAlongZ(world, group, { x, y = 0, h, thickness, z1, z2, gaps = [], m
   }
 }
 
+const FRAME_MAT = new THREE.MeshStandardMaterial({ color: 0x2b2620, roughness: 0.45, metalness: 0.35 });
+const DOOR_MAT = new THREE.MeshStandardMaterial({ color: 0x3a271a, roughness: 0.55, metalness: 0.05 });
+const HANDLE_MAT = new THREE.MeshStandardMaterial({ color: 0xd9c27a, metalness: 0.7, roughness: 0.3 });
+
+/** Dark mullion frame (top/bottom/side bars + a cross) laid over a glass pane for a finished look. */
+function windowFrame(house, cx, cy, cz, w, h) {
+  const t = 0.06, d = 0.08;
+  house.add(box(w + t, t, d, FRAME_MAT, { x: cx, y: cy + h / 2, z: cz, castShadow: false }));
+  house.add(box(w + t, t, d, FRAME_MAT, { x: cx, y: cy - h / 2, z: cz, castShadow: false }));
+  house.add(box(t, h, d, FRAME_MAT, { x: cx - w / 2, y: cy, z: cz, castShadow: false }));
+  house.add(box(t, h, d, FRAME_MAT, { x: cx + w / 2, y: cy, z: cz, castShadow: false }));
+  house.add(box(t * 0.8, h, d * 0.8, FRAME_MAT, { x: cx, y: cy, z: cz, castShadow: false }));
+  house.add(box(w, t * 0.8, d * 0.8, FRAME_MAT, { x: cx, y: cy, z: cz, castShadow: false }));
+}
+
+/** A door leaf hinged at (hingeX, hingeZ), its panel spanning local +X before `rotationY` is applied. */
+function makeSwingDoor(w, h, hingeX, hingeZ, rotationY) {
+  const g = new THREE.Group();
+  const leaf = box(w, h, 0.05, DOOR_MAT, { x: w / 2, y: h / 2 });
+  g.add(leaf);
+  g.add(m(new THREE.CylinderGeometry(0.015, 0.015, 0.12, 8), HANDLE_MAT, {
+    x: w - 0.08, y: h / 2, z: 0.05 / 2 + 0.03, rz: Math.PI / 2, castShadow: false,
+  }));
+  g.position.set(hingeX, 0, hingeZ);
+  g.rotation.y = rotationY;
+  return g;
+}
+
 function floorSlab(group, x1, x2, z1, z2, y, mat) {
   const f = m(new THREE.PlaneGeometry(x2 - x1, z2 - z1), mat, {
     x: (x1 + x2) / 2, y, z: (z1 + z2) / 2, rx: -Math.PI / 2,
@@ -111,6 +139,19 @@ export function buildHouse(world) {
   house.add(glassB);
   addCollider(world, glassA);
   addCollider(world, glassB);
+  windowFrame(house, -2.9, 1.5, Z2, 2.6, 2.0);
+  windowFrame(house, 2.9, 1.5, Z2, 2.6, 2.0);
+
+  // Entrance: open double door, swung inward so the opening stays walkable.
+  house.add(makeSwingDoor(0.95, 2.15, -1, Z2 - 0.03, 1.3));
+  house.add(makeSwingDoor(0.95, 2.15, 1, Z2 - 0.03, -1.3));
+  house.add(box(2.1, 0.1, 0.15, FRAME_MAT, { x: 0, y: 2.2, z: Z2, castShadow: false })); // lintel
+
+  // Side doors (pool terrace / football field access), also open.
+  house.add(makeSwingDoor(0.95, 2.15, X1 + 0.03, -1, 0.35));
+  house.add(box(0.1, 2.1, 2.05, FRAME_MAT, { x: X1, y: 1.1, z: 0, castShadow: false }));
+  house.add(makeSwingDoor(0.95, 2.15, X2 - 0.03, 1, Math.PI - 0.35));
+  house.add(box(0.1, 2.1, 2.05, FRAME_MAT, { x: X2, y: 1.1, z: 0, castShadow: false }));
 
   // ---------- Interior partition wall separating north (bedrooms) / south (living) wings ----------
   wallAlongX(world, house, {
@@ -126,6 +167,14 @@ export function buildHouse(world) {
   const parapet = Materials.exteriorWall("#dcd2b8");
   wallAlongX(world, house, { z: Z1 - 0.4, h: 0.4, thickness: 0.15, x1: X1 - 0.4, x2: X2 + 0.4, mat: parapet, y: GROUND_H + 0.3, collide: false });
   wallAlongX(world, house, { z: Z2 + 0.4, h: 0.4, thickness: 0.15, x1: X1 - 0.4, x2: X2 + 0.4, mat: parapet, y: GROUND_H + 0.3, collide: false });
+
+  // Dark fascia trim tracing the roof overhang, plus a shallow gutter lip — grounds the flat roof visually.
+  const fasciaMat = new THREE.MeshStandardMaterial({ color: 0x332e28, roughness: 0.55 });
+  const roofEdgeY = GROUND_H + 0.02;
+  house.add(box(X2 - X1 + 1.1, 0.14, 0.05, fasciaMat, { x: 0, y: roofEdgeY, z: Z1 - 0.5, castShadow: false }));
+  house.add(box(X2 - X1 + 1.1, 0.14, 0.05, fasciaMat, { x: 0, y: roofEdgeY, z: Z2 + 0.5, castShadow: false }));
+  house.add(box(0.05, 0.14, Z2 - Z1 + 1.1, fasciaMat, { x: X1 - 0.5, y: roofEdgeY, z: 0, castShadow: false }));
+  house.add(box(0.05, 0.14, Z2 - Z1 + 1.1, fasciaMat, { x: X2 + 0.5, y: roofEdgeY, z: 0, castShadow: false }));
 
   // ---------- Lighting ----------
   house.add(pointLamp(0xfff1d6, 12, 9, { x: -4.5, y: 2.7, z: 1.5 }));

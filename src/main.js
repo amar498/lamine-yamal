@@ -1,5 +1,10 @@
 import * as THREE from "three";
-import { skyTexture } from "./textures.js";
+import { Sky } from "three/addons/objects/Sky.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { waterNormalsTexture } from "./textures.js";
 import { buildHouse } from "./house.js";
 import { buildGrounds } from "./grounds.js";
 import { FirstPersonController } from "./player.js";
@@ -27,6 +32,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
+// Keep the simpler pre-r155 light falloff so plain intensity values (as used
+// throughout this scene) stay easy to reason about instead of photometric units.
+renderer.useLegacyLights = true;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -40,16 +48,31 @@ function setProgress(pct, text) {
 }
 
 function setupSkyAndLights() {
-  const skyGeo = new THREE.SphereGeometry(260, 24, 16);
-  const skyMat = new THREE.MeshBasicMaterial({ map: skyTexture(), side: THREE.BackSide, fog: false, depthWrite: false });
-  scene.add(new THREE.Mesh(skyGeo, skyMat));
-  scene.fog = new THREE.Fog(0xcfe9f5, 30, 170);
+  const sky = new Sky();
+  sky.scale.setScalar(450);
+  scene.add(sky);
 
-  const hemi = new THREE.HemisphereLight(0xaed4f5, 0x4c7a3a, 0.65);
-  scene.add(hemi);
+  // Sun direction: mid-morning, coming from the south-east over the garden.
+  const sunDir = new THREE.Vector3();
+  const elevation = 32, azimuth = 150;
+  const phi = THREE.MathUtils.degToRad(90 - elevation);
+  const theta = THREE.MathUtils.degToRad(azimuth);
+  sunDir.setFromSphericalCoords(1, phi, theta);
+  world.sunDirection = sunDir;
+  world.waterNormals = waterNormalsTexture(256);
+  world.waterNormals.wrapS = world.waterNormals.wrapT = THREE.RepeatWrapping;
 
-  const sun = new THREE.DirectionalLight(0xfff2d9, 1.4);
-  sun.position.set(40, 55, 25);
+  const skyUniforms = sky.material.uniforms;
+  skyUniforms.turbidity.value = 3.4;
+  skyUniforms.rayleigh.value = 1.7;
+  skyUniforms.mieCoefficient.value = 0.006;
+  skyUniforms.mieDirectionalG.value = 0.82;
+  skyUniforms.sunPosition.value.copy(sunDir);
+
+  scene.fog = new THREE.Fog(0xcfe0ea, 40, 180);
+
+  const sun = new THREE.DirectionalLight(0xfff2d9, 1.5);
+  sun.position.copy(sunDir).multiplyScalar(80);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.left = -45;
@@ -57,13 +80,22 @@ function setupSkyAndLights() {
   sun.shadow.camera.top = 40;
   sun.shadow.camera.bottom = -30;
   sun.shadow.camera.near = 1;
-  sun.shadow.camera.far = 130;
+  sun.shadow.camera.far = 160;
   sun.shadow.bias = -0.0015;
   scene.add(sun);
   scene.add(sun.target);
 
-  const fill = new THREE.AmbientLight(0xffffff, 0.22);
+  const hemi = new THREE.HemisphereLight(0xaed4f5, 0x4c7a3a, 0.3);
+  scene.add(hemi);
+  const fill = new THREE.AmbientLight(0xffffff, 0.12);
   scene.add(fill);
+
+  // Bake the sky into a PMREM environment map so PBR materials get realistic
+  // ambient light and subtle sky-colored reflections instead of flat fill light.
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envRT = pmrem.fromScene(scene, 0.02);
+  scene.environment = envRT.texture;
+  pmrem.dispose();
 }
 
 function drawMinimap() {
@@ -123,7 +155,14 @@ async function boot() {
   }
 
   const controller = new FirstPersonController(camera, renderer.domElement, world);
-  window.__scene = { camera, controller, world, scene, renderer };
+
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.32, 0.5, 0.86);
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+
+  window.__scene = { camera, controller, world, scene, renderer, composer };
 
   loadingScreen.classList.add("hidden");
   menuScreen.classList.remove("hidden");
@@ -189,15 +228,17 @@ async function boot() {
       fpsTimer = 0;
     }
 
-    renderer.render(scene, camera);
+    composer.render();
   }
   animate();
-}
 
-window.addEventListener("resize", () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+    bloom.setSize(window.innerWidth, window.innerHeight);
+  });
+}
 
 boot();
