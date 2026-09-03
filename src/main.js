@@ -31,10 +31,7 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
-// Keep the simpler pre-r155 light falloff so plain intensity values (as used
-// throughout this scene) stay easy to reason about instead of photometric units.
-renderer.useLegacyLights = true;
+renderer.toneMappingExposure = 0.95;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -71,7 +68,7 @@ function setupSkyAndLights() {
 
   scene.fog = new THREE.Fog(0xcfe0ea, 40, 180);
 
-  const sun = new THREE.DirectionalLight(0xfff2d9, 1.5);
+  const sun = new THREE.DirectionalLight(0xfff2d9, 1.3);
   sun.position.copy(sunDir).multiplyScalar(80);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -85,9 +82,9 @@ function setupSkyAndLights() {
   scene.add(sun);
   scene.add(sun.target);
 
-  const hemi = new THREE.HemisphereLight(0xaed4f5, 0x4c7a3a, 0.3);
+  const hemi = new THREE.HemisphereLight(0xaed4f5, 0x4c7a3a, 0.18);
   scene.add(hemi);
-  const fill = new THREE.AmbientLight(0xffffff, 0.12);
+  const fill = new THREE.AmbientLight(0xffffff, 0.06);
   scene.add(fill);
 
   // Bake the sky into a PMREM environment map so PBR materials get realistic
