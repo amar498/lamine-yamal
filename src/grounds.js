@@ -104,17 +104,29 @@ export function buildGrounds(world) {
   // ---------- Pool + terrace (west of house) ----------
   const deckMat = Materials.deck();
   const deckX1 = -25.5, deckX2 = -9.4, deckZ1 = -7, deckZ2 = 10.5;
-  const deck = m(new THREE.PlaneGeometry(deckX2 - deckX1, deckZ2 - deckZ1), deckMat, {
-    x: (deckX1 + deckX2) / 2, y: 0.02, z: (deckZ1 + deckZ2) / 2, rx: -Math.PI / 2, castShadow: false,
-  });
-  deck.receiveShadow = true;
-  grounds.add(deck);
   excluded.push({ x1: deckX1 - 1, x2: deckX2 + 1, z1: deckZ1 - 1, z2: deckZ2 + 1 });
   world.floorZones.push({ kind: "flat", x1: deckX1, x2: deckX2, z1: deckZ1, z2: deckZ2, y: 0, label: "Piscine & terrasse" });
 
   const poolX1 = -22.5, poolX2 = -14.5, poolZ1 = -3.5, poolZ2 = 4.5;
   const copingMat = Materials.marble();
   const copingH = 0.22, copingT = 0.35;
+
+  // The deck is built with a rectangular hole (sized to the outer edge of the
+  // coping) so the recessed pool water is actually visible from above instead
+  // of being covered by an unbroken deck plane.
+  const holeX1 = poolX1 - copingT, holeX2 = poolX2 + copingT;
+  const holeZ1 = poolZ1 - copingT, holeZ2 = poolZ2 + copingT;
+  const deckPart = (x1, x2, z1, z2) => {
+    const part = m(new THREE.PlaneGeometry(x2 - x1, z2 - z1), deckMat, {
+      x: (x1 + x2) / 2, y: 0.02, z: (z1 + z2) / 2, rx: -Math.PI / 2, castShadow: false,
+    });
+    part.receiveShadow = true;
+    grounds.add(part);
+  };
+  deckPart(deckX1, holeX1, deckZ1, deckZ2);
+  deckPart(holeX2, deckX2, deckZ1, deckZ2);
+  deckPart(holeX1, holeX2, deckZ1, holeZ1);
+  deckPart(holeX1, holeX2, holeZ2, deckZ2);
   const copingSpecs = [
     { w: poolX2 - poolX1 + copingT * 2, d: copingT, x: (poolX1 + poolX2) / 2, z: poolZ1 - copingT / 2 },
     { w: poolX2 - poolX1 + copingT * 2, d: copingT, x: (poolX1 + poolX2) / 2, z: poolZ2 + copingT / 2 },
@@ -143,12 +155,18 @@ export function buildGrounds(world) {
   grounds.add(shift(createParasol(), -13.5, 0, 5));
   grounds.add(shift(createParasol(), -24.5, 0, -5.5));
 
-  // Hot tub / jacuzzi on the terrace, near the pool
+  // Hot tub / jacuzzi on the terrace, near the pool — an open-top basin (four
+  // walls + a floor) so the water is actually visible instead of being sealed
+  // under a solid lid.
   const tubGroup = new THREE.Group();
   const tubWood = Materials.saunaWood();
-  const tubW = 2.0, tubD = 2.0, tubH = 0.75;
-  tubGroup.add(box(tubW, tubH, tubD, tubWood, { y: tubH / 2 }));
-  const jacuzziWater = createRealisticWater(world, tubW - 0.2, tubD - 0.2, {
+  const tubW = 2.0, tubD = 2.0, tubH = 0.75, tubWallT = 0.1;
+  tubGroup.add(box(tubW, tubWallT, tubD, tubWood, { y: tubWallT / 2 }));
+  tubGroup.add(box(tubW, tubH, tubWallT, tubWood, { y: tubH / 2, z: -tubD / 2 + tubWallT / 2 }));
+  tubGroup.add(box(tubW, tubH, tubWallT, tubWood, { y: tubH / 2, z: tubD / 2 - tubWallT / 2 }));
+  tubGroup.add(box(tubWallT, tubH, tubD, tubWood, { x: -tubW / 2 + tubWallT / 2, y: tubH / 2 }));
+  tubGroup.add(box(tubWallT, tubH, tubD, tubWood, { x: tubW / 2 - tubWallT / 2, y: tubH / 2 }));
+  const jacuzziWater = createRealisticWater(world, tubW - tubWallT * 2, tubD - tubWallT * 2, {
     textureSize: 256, color: 0x2f93b8, distortionScale: 1.1,
   });
   jacuzziWater.position.y = tubH - 0.08;
