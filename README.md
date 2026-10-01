@@ -38,3 +38,7 @@ Puis ouvrir `http://localhost:8080` dans un navigateur.
 - `src/player.js` — déplacement à la première personne, collisions, gestion des étages (escalier vers la cave)
 - `src/main.js` — assemblage de la scène, éclairage, ciel, boucle d'animation, interface
 - `vendor/three/` — Three.js est inclus localement (pas de dépendance à un CDN au runtime)
+
+## Jarvis — assistant vocal
+
+Le dossier [`jarvis/`](jarvis/) contient un assistant vocal inspiré d'Iron Man et propulsé par Claude Code : on lui parle au micro, il répond à voix haute. Installation et mode d'emploi dans [`jarvis/README.md`](jarvis/README.md).

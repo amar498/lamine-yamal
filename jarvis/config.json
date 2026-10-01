@@ -1,0 +1,10 @@
+{
+  "langue": "fr-FR",
+  "voix": "fr-FR-HenriNeural",
+  "vitesse_voix": "+8%",
+  "modele": "sonnet",
+  "mode": "leger",
+  "mot_cle_obligatoire": true,
+  "fenetre_conversation_s": 10,
+  "autoriser_actions": false
+}
